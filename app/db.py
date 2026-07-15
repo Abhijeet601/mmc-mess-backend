@@ -6,19 +6,23 @@ from typing import Iterator
 import pymysql
 from pymysql.cursors import DictCursor
 
-from .config import BASE_DIR, MYSQL_DATABASE, MYSQL_HOST, MYSQL_PASSWORD, MYSQL_PORT, MYSQL_USER
+from .config import (
+    BASE_DIR, 
+    MYSQL_DATABASE, MYSQL_HOST, MYSQL_PASSWORD, MYSQL_PORT, MYSQL_USER,
+    POETIC_DATABASE, POETIC_HOST, POETIC_PASSWORD, POETIC_PORT, POETIC_USER
+)
 
 
 def row_to_dict(row: dict | None) -> dict | None:
     return row
 
 
-def _connect(database: str | None = MYSQL_DATABASE):
+def _connect(database: str | None = MYSQL_DATABASE, host=MYSQL_HOST, port=MYSQL_PORT, user=MYSQL_USER, password=MYSQL_PASSWORD):
     return pymysql.connect(
-        host=MYSQL_HOST,
-        port=MYSQL_PORT,
-        user=MYSQL_USER,
-        password=MYSQL_PASSWORD,
+        host=host,
+        port=port,
+        user=user,
+        password=password,
         database=database,
         charset="utf8mb4",
         cursorclass=DictCursor,
@@ -53,6 +57,30 @@ class MySQLDatabase:
         self.conn.close()
 
 
+class PoeticsDatabase:
+    """Read-only connection to Poetic Reflection master database."""
+    def __init__(self):
+        self.conn = _connect(
+            database=POETIC_DATABASE,
+            host=POETIC_HOST,
+            port=POETIC_PORT,
+            user=POETIC_USER,
+            password=POETIC_PASSWORD
+        )
+
+    def execute(self, sql: str, params=None):
+        """Execute SELECT query only (read-only)."""
+        cursor = self.conn.cursor()
+        # Verify this is a SELECT query (basic security)
+        if not sql.strip().upper().startswith("SELECT"):
+            raise ValueError("Only SELECT queries are allowed on Poetic Reflection database")
+        cursor.execute(_mysql_sql(sql), params or ())
+        return cursor
+
+    def close(self) -> None:
+        self.conn.close()
+
+
 @contextmanager
 def get_db() -> Iterator[MySQLDatabase]:
     db = MySQLDatabase()
@@ -62,6 +90,16 @@ def get_db() -> Iterator[MySQLDatabase]:
     except Exception:
         db.rollback()
         raise
+    finally:
+        db.close()
+
+
+@contextmanager
+def get_poetic_db() -> Iterator[PoeticsDatabase]:
+    """Get read-only connection to Poetic Reflection database."""
+    db = PoeticsDatabase()
+    try:
+        yield db
     finally:
         db.close()
 
@@ -131,3 +169,4 @@ def init_db() -> None:
             db.execute("ALTER TABLE students ADD COLUMN department VARCHAR(120) NULL AFTER course")
         if "semester" not in student_columns:
             db.execute("ALTER TABLE students ADD COLUMN semester VARCHAR(40) NULL AFTER academic_year")
+
