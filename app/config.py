@@ -19,11 +19,11 @@ def _load_env_file() -> None:
 
 _load_env_file()
 
-MYSQL_HOST = os.getenv("MYSQL_HOST", "127.0.0.1")
-MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
-MYSQL_USER = os.getenv("MYSQL_USER", "root")
-MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "")
-MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "mess")
+MYSQL_HOST = os.getenv("MYSQL_HOST") or os.getenv("MYSQLHOST", "127.0.0.1")
+MYSQL_PORT = int(os.getenv("MYSQL_PORT") or os.getenv("MYSQLPORT", "3306"))
+MYSQL_USER = os.getenv("MYSQL_USER") or os.getenv("MYSQLUSER", "root")
+MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD") or os.getenv("MYSQLPASSWORD", "")
+MYSQL_DATABASE = os.getenv("MYSQL_DATABASE") or os.getenv("MYSQLDATABASE", "mess")
 APP_SECRET = os.getenv("APP_SECRET", "dev-secret-change-before-production")
 TOKEN_TTL_SECONDS = int(os.getenv("TOKEN_TTL_SECONDS", "28800"))
 FRONTEND_ORIGINS = [
