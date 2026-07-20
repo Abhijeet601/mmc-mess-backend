@@ -131,3 +131,10 @@ def init_db() -> None:
             db.execute("ALTER TABLE students ADD COLUMN department VARCHAR(120) NULL AFTER course")
         if "semester" not in student_columns:
             db.execute("ALTER TABLE students ADD COLUMN semester VARCHAR(40) NULL AFTER academic_year")
+
+        admin_seed_path = Path(BASE_DIR) / "create_admin_ids.sql"
+        if admin_seed_path.exists():
+            for statement in _split_sql(admin_seed_path.read_text(encoding="utf-8")):
+                stripped = statement.strip()
+                if stripped and not stripped.upper().startswith("USE "):
+                    db.execute(stripped)

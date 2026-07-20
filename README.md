@@ -10,7 +10,7 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 copy .env.example .env
-python -m app.seed_admin --login-id SUPERADMIN001 --password "ChangeMe@123" --role super-admin --name "Super Admin"
+python -m app.seed_admin --login-id SUPERADMIN001 --password "SuperAdmin@123" --role super-admin --name "Super Admin"
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
@@ -22,7 +22,7 @@ Existing local development logins:
 
 | Portal | Login ID | Password |
 | --- | --- | --- |
-| Super Admin | `SUPERADMIN001` | `ChangeMe@123` |
+| Super Admin | `SUPERADMIN001` | `SuperAdmin@123` |
 | Admin | `ADMIN001` | `Admin@123` |
 | Student | `STUDENT001` | `Student@123` |
 
@@ -34,7 +34,7 @@ Use `POST /api/auth/login` with:
 {
   "portal": "super-admin",
   "login_id": "SUPERADMIN001",
-  "password": "ChangeMe@123"
+  "password": "SuperAdmin@123"
 }
 ```
 
