@@ -79,6 +79,12 @@ def payment_analytics(user=Depends(require_auth)):
     return repository.analytics()
 
 
+@router.get("/dashboard")
+def dashboard(user=Depends(require_auth)):
+    require_roles(user, {"admin", "super-admin"})
+    return repository.attendance_dashboard()
+
+
 @router.post("/payments/mark-paid")
 def mark_paid(payload: MarkPaidRequest, user=Depends(require_auth)):
     require_roles(user, {"admin", "super-admin"})

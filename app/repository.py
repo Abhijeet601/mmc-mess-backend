@@ -320,12 +320,90 @@ def analytics() -> dict:
     paid = [row for row in rows if row["status"] == "Paid"]
     pending = [row for row in rows if row["status"] == "Pending"]
     overdue = [row for row in rows if row["status"] == "Overdue"]
+    today_collection = sum(
+        row["amount"] + row["fine"]
+        for row in paid
+        if row.get("payment_date") and row["payment_date"].date() == date.today()
+    )
     return {
         "totalInvoices": len(rows),
         "paidStudents": len(paid),
         "pendingStudents": len(pending),
         "overdueStudents": len(overdue),
         "monthlyCollection": sum(row["amount"] + row["fine"] for row in paid),
+        "todayCollection": today_collection,
         "totalOutstanding": sum(row["amount"] + row["fine"] for row in pending + overdue),
         "collectionPercent": round((len(paid) / len(rows)) * 100) if rows else 0,
+    }
+
+
+def attendance_dashboard() -> dict:
+    with get_db() as db:
+        totals = dict(db.execute(
+            """
+            SELECT
+              (SELECT COUNT(*) FROM students WHERE active=1) AS total_students,
+              (SELECT COUNT(*) FROM users WHERE active=1 AND role IN ('admin','super-admin')) AS total_admins,
+              COUNT(DISTINCT CASE WHEN ma.meal_date=CURRENT_DATE THEN ma.student_id END) AS students_present,
+              SUM(CASE WHEN ma.meal_date=CURRENT_DATE AND ma.meal_type='Breakfast' THEN 1 ELSE 0 END) AS breakfast,
+              SUM(CASE WHEN ma.meal_date=CURRENT_DATE AND ma.meal_type='Lunch' THEN 1 ELSE 0 END) AS lunch,
+              SUM(CASE WHEN ma.meal_date=CURRENT_DATE AND ma.meal_type='Snacks' THEN 1 ELSE 0 END) AS snacks,
+              SUM(CASE WHEN ma.meal_date=CURRENT_DATE AND ma.meal_type='Dinner' THEN 1 ELSE 0 END) AS dinner
+            FROM meal_attendance ma
+            """
+        ).fetchone())
+        weekly = [dict(row) for row in db.execute(
+            """
+            SELECT DATE_FORMAT(days.day_date, '%a') AS day,
+                   days.day_date AS date,
+                   COUNT(DISTINCT ma.student_id) AS present
+            FROM (
+              SELECT CURRENT_DATE - INTERVAL 6 DAY AS day_date UNION ALL
+              SELECT CURRENT_DATE - INTERVAL 5 DAY UNION ALL
+              SELECT CURRENT_DATE - INTERVAL 4 DAY UNION ALL
+              SELECT CURRENT_DATE - INTERVAL 3 DAY UNION ALL
+              SELECT CURRENT_DATE - INTERVAL 2 DAY UNION ALL
+              SELECT CURRENT_DATE - INTERVAL 1 DAY UNION ALL
+              SELECT CURRENT_DATE
+            ) days
+            LEFT JOIN meal_attendance ma ON ma.meal_date=days.day_date
+            GROUP BY days.day_date
+            ORDER BY days.day_date
+            """
+        ).fetchall()]
+        hostels = [dict(row) for row in db.execute(
+            "SELECT COALESCE(NULLIF(hostel,''),'Not allotted') AS name, COUNT(*) AS students FROM students WHERE active=1 GROUP BY COALESCE(NULLIF(hostel,''),'Not allotted') ORDER BY students DESC"
+        ).fetchall()]
+        recent = [dict(row) for row in db.execute(
+            """
+            SELECT ma.id, ma.meal_type AS meal, ma.meal_date, ma.scanned_at,
+                   s.id AS student_id, s.name, s.registration_number, s.hostel, s.room_number, s.photo_url
+            FROM meal_attendance ma
+            JOIN students s ON s.id=ma.student_id
+            ORDER BY ma.scanned_at DESC
+            LIMIT 20
+            """
+        ).fetchall()]
+    total_students = int(totals.get("total_students") or 0)
+    students_present = int(totals.get("students_present") or 0)
+    return {
+        "stats": {
+            "totalStudents": total_students,
+            "todayAttendance": students_present,
+            "absent": max(total_students - students_present, 0),
+            "breakfast": int(totals.get("breakfast") or 0),
+            "lunch": int(totals.get("lunch") or 0),
+            "snacks": int(totals.get("snacks") or 0),
+            "dinner": int(totals.get("dinner") or 0),
+            "totalAdmins": int(totals.get("total_admins") or 0),
+        },
+        "weeklyAttendance": weekly,
+        "mealDistribution": [
+            {"name": "Breakfast", "value": int(totals.get("breakfast") or 0), "color": "#F59E0B"},
+            {"name": "Lunch", "value": int(totals.get("lunch") or 0), "color": "#2563EB"},
+            {"name": "Snacks", "value": int(totals.get("snacks") or 0), "color": "#06B6D4"},
+            {"name": "Dinner", "value": int(totals.get("dinner") or 0), "color": "#0F172A"},
+        ],
+        "hostelDistribution": hostels,
+        "recentAttendance": recent,
     }
