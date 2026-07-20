@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException
 
 from .. import repository
+from ..config import ATTENDANCE_TEST_MODE
 from ..db import get_db, row_to_dict
 from ..schemas import MealMenuUpsert, ProfileChangeCreate, ProfileChangeDecision, QRConsumeRequest
 from ..security import require_auth, require_roles
@@ -46,6 +47,14 @@ def _current_meal(now: datetime) -> str | None:
     for name, start, end in (("Breakfast", 7 * 60, 10 * 60), ("Lunch", 12 * 60, 15 * 60), ("Snacks", 16 * 60, 18 * 60), ("Dinner", 19 * 60, 22 * 60)):
         if start <= minute < end:
             return name
+    if ATTENDANCE_TEST_MODE:
+        if minute < 11 * 60:
+            return "Breakfast"
+        if minute < 16 * 60:
+            return "Lunch"
+        if minute < 19 * 60:
+            return "Snacks"
+        return "Dinner"
     return None
 
 
@@ -53,7 +62,12 @@ def _current_meal(now: datetime) -> str | None:
 def scanner_status(user=Depends(require_auth)):
     require_roles(user, {"admin", "super-admin"})
     now = datetime.now(IST)
-    return {"meal": _current_meal(now), "server_time": now.isoformat(), "timezone": "Asia/Kolkata"}
+    return {
+        "meal": _current_meal(now),
+        "server_time": now.isoformat(),
+        "timezone": "Asia/Kolkata",
+        "test_mode": ATTENDANCE_TEST_MODE,
+    }
 
 
 @router.post("/scanner/consume")

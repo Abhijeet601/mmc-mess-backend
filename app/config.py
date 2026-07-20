@@ -28,6 +28,7 @@ APP_SECRET = os.getenv("APP_SECRET", "dev-secret-change-before-production")
 TOKEN_TTL_SECONDS = int(os.getenv("TOKEN_TTL_SECONDS", "28800"))
 HOSTEL_ERP_API_URL = os.getenv("HOSTEL_ERP_API_URL", "").strip().rstrip("/")
 HOSTEL_ERP_TIMEOUT_SECONDS = float(os.getenv("HOSTEL_ERP_TIMEOUT_SECONDS", "20"))
+ATTENDANCE_TEST_MODE = os.getenv("ATTENDANCE_TEST_MODE", "true").strip().lower() in {"1", "true", "yes", "on"}
 FRONTEND_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
