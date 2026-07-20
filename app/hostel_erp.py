@@ -21,6 +21,7 @@ class VerifiedHostelStudent:
     room_number: str
     course: str | None
     academic_year: str | None
+    photo_url: str | None
 
 
 def integration_enabled() -> bool:
@@ -154,4 +155,5 @@ def authenticate_paid_student(identifier: str, password: str) -> VerifiedHostelS
         room_number=room_number or "Not allotted",
         course=_text(application.get("course") or user.get("course")) or None,
         academic_year=_text(application.get("session") or user.get("session")) or None,
+        photo_url=_text(application.get("student_photo_data")) or None,
     )

@@ -41,7 +41,7 @@ def upsert_hostel_erp_student(profile, password_hash: str) -> dict:
                 """
                 UPDATE students
                 SET admission_number=?, registration_number=?, name=?, email=?, mobile=?, hostel=?,
-                    room_number=?, course=?, academic_year=?, active=1
+                    room_number=?, course=?, academic_year=?, photo_url=?, active=1
                 WHERE id=?
                 """,
                 (
@@ -54,6 +54,7 @@ def upsert_hostel_erp_student(profile, password_hash: str) -> dict:
                     profile.room_number,
                     profile.course,
                     profile.academic_year,
+                    profile.photo_url,
                     student["id"],
                 ),
             )
@@ -63,8 +64,8 @@ def upsert_hostel_erp_student(profile, password_hash: str) -> dict:
                 """
                 INSERT INTO students
                     (admission_number, registration_number, name, email, mobile, hostel,
-                     room_number, course, academic_year, active)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                     room_number, course, academic_year, photo_url, active)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
                 """,
                 (
                     profile.admission_number,
@@ -76,6 +77,7 @@ def upsert_hostel_erp_student(profile, password_hash: str) -> dict:
                     profile.room_number,
                     profile.course,
                     profile.academic_year,
+                    profile.photo_url,
                 ),
             )
             student_id = cursor.lastrowid
