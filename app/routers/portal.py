@@ -154,9 +154,16 @@ def decide_profile_request(request_id: int, payload: ProfileChangeDecision, user
 
 
 @router.get("/meal-menus")
-def menus(user=Depends(require_auth)):
+def menus(week_start: str | None = None, user=Depends(require_auth)):
     require_roles(user, {"student", "admin", "super-admin"})
-    start = date.today() - timedelta(days=date.today().weekday())
+    if week_start:
+        try:
+            requested = date.fromisoformat(week_start)
+        except ValueError as exc:
+            raise HTTPException(422, "week_start must use YYYY-MM-DD") from exc
+        start = requested - timedelta(days=requested.weekday())
+    else:
+        start = date.today() - timedelta(days=date.today().weekday())
     end = start + timedelta(days=6)
     with get_db() as db:
         rows = db.execute("SELECT * FROM meal_menus WHERE menu_date BETWEEN ? AND ? ORDER BY menu_date", (start, end)).fetchall()
