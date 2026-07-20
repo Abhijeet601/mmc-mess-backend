@@ -112,6 +112,15 @@ def authenticate_paid_student(identifier: str, password: str) -> VerifiedHostelS
                         room_number = _text(room_response.json().get("room_number"))
                 except (httpx.HTTPError, ValueError):
                     room_number = ""
+            room_number = room_number or _text(application.get("existing_room_number"))
+            bed_number = _text(application.get("bed") or application.get("existing_bed_number"))
+            if (
+                room_number
+                and bed_number
+                and not room_number.lower().endswith(f" {bed_number.lower()}")
+                and not bed_number.lower().startswith(room_number.lower())
+            ):
+                room_number = f"{room_number} {bed_number}"
     except HTTPException:
         raise
     except (httpx.HTTPError, ValueError) as exc:
