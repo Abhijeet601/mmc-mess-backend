@@ -90,6 +90,16 @@ def authenticate_paid_student(identifier: str, password: str) -> VerifiedHostelS
             payments = payments_response.json() or []
             hostels = hostels_response.json() or []
             application = _latest_application(applications)
+            photo_url = _text(application.get("student_photo_data"))
+            try:
+                photo_response = client.get(
+                    f"{HOSTEL_ERP_API_URL}/students/{hostel_student_id}/photo-url",
+                    headers=headers,
+                )
+                if photo_response.is_success:
+                    photo_url = _text(photo_response.json().get("photo_url")) or photo_url
+            except (httpx.HTTPError, ValueError):
+                pass
             room_number = ""
             room_id = application.get("room_id")
             if room_id:
@@ -155,5 +165,5 @@ def authenticate_paid_student(identifier: str, password: str) -> VerifiedHostelS
         room_number=room_number or "Not allotted",
         course=_text(application.get("course") or user.get("course")) or None,
         academic_year=_text(application.get("session") or user.get("session")) or None,
-        photo_url=_text(application.get("student_photo_data")) or None,
+        photo_url=photo_url or None,
     )
