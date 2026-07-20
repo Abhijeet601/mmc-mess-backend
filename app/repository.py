@@ -407,3 +407,53 @@ def attendance_dashboard() -> dict:
         "hostelDistribution": hostels,
         "recentAttendance": recent,
     }
+
+
+def list_attendance(
+    *,
+    student_id: int | None = None,
+    search: str | None = None,
+    meal: str | None = None,
+    hostel: str | None = None,
+    attendance_date: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+) -> dict:
+    clauses: list[str] = []
+    params: list = []
+    if student_id is not None:
+        clauses.append("ma.student_id=?")
+        params.append(student_id)
+    if search:
+        clauses.append("(LOWER(s.name) LIKE ? OR LOWER(s.registration_number) LIKE ? OR LOWER(s.admission_number) LIKE ?)")
+        value = f"%{search.strip().lower()}%"
+        params.extend([value, value, value])
+    if meal:
+        clauses.append("ma.meal_type=?")
+        params.append(meal)
+    if hostel:
+        clauses.append("s.hostel=?")
+        params.append(hostel)
+    if attendance_date:
+        clauses.append("ma.meal_date=?")
+        params.append(attendance_date)
+    where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    offset = (page - 1) * page_size
+    with get_db() as db:
+        total = int(db.execute(
+            f"SELECT COUNT(*) AS total FROM meal_attendance ma JOIN students s ON s.id=ma.student_id {where}",
+            params,
+        ).fetchone()["total"])
+        rows = [dict(row) for row in db.execute(
+            f"""
+            SELECT ma.id, ma.student_id, ma.meal_type AS meal, ma.meal_date, ma.scanned_at,
+                   s.name, s.registration_number, s.admission_number, s.hostel, s.room_number, s.photo_url
+            FROM meal_attendance ma
+            JOIN students s ON s.id=ma.student_id
+            {where}
+            ORDER BY ma.scanned_at DESC
+            LIMIT ? OFFSET ?
+            """,
+            [*params, page_size, offset],
+        ).fetchall()]
+    return {"records": rows, "total": total, "page": page, "page_size": page_size}

@@ -5,7 +5,7 @@ import logging
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from .. import repository
 from ..config import ATTENDANCE_TEST_MODE
@@ -161,6 +161,29 @@ def menus(user=Depends(require_auth)):
     with get_db() as db:
         rows = db.execute("SELECT * FROM meal_menus WHERE menu_date BETWEEN ? AND ? ORDER BY menu_date", (start, end)).fetchall()
     return {"week_start": start, "menus": [dict(r) for r in rows]}
+
+
+@router.get("/attendance")
+def attendance_history(
+    search: str | None = None,
+    meal: str | None = None,
+    hostel: str | None = None,
+    attendance_date: str | None = Query(default=None, alias="date"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    user=Depends(require_auth),
+):
+    require_roles(user, {"student", "admin", "super-admin"})
+    scoped_student_id = user.get("student_id") if user.get("role") == "student" else None
+    return repository.list_attendance(
+        student_id=scoped_student_id,
+        search=search,
+        meal=meal,
+        hostel=hostel,
+        attendance_date=attendance_date,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.put("/admin/meal-menus")
