@@ -26,11 +26,13 @@ MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD") or os.getenv("MYSQLPASSWORD", "")
 MYSQL_DATABASE = os.getenv("MYSQL_DATABASE") or os.getenv("MYSQLDATABASE", "mess")
 APP_SECRET = os.getenv("APP_SECRET", "dev-secret-change-before-production")
 TOKEN_TTL_SECONDS = int(os.getenv("TOKEN_TTL_SECONDS", "28800"))
+HOSTEL_ERP_API_URL = os.getenv("HOSTEL_ERP_API_URL", "").strip().rstrip("/")
+HOSTEL_ERP_TIMEOUT_SECONDS = float(os.getenv("HOSTEL_ERP_TIMEOUT_SECONDS", "20"))
 FRONTEND_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
         "FRONTEND_ORIGINS",
-        "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174",
+        "https://mmc-mess-frontend.vercel.app,http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174",
     ).split(",")
     if origin.strip()
 ]

@@ -22,6 +22,101 @@ def get_user_by_login_id(login_id: str) -> dict | None:
         return row_to_dict(row)
 
 
+def upsert_hostel_erp_student(profile, password_hash: str) -> dict:
+    with get_db() as db:
+        student = row_to_dict(
+            db.execute(
+                """
+                SELECT * FROM students
+                WHERE registration_number = ? OR admission_number = ?
+                ORDER BY registration_number = ? DESC
+                LIMIT 1
+                FOR UPDATE
+                """,
+                (profile.registration_number, profile.admission_number, profile.registration_number),
+            ).fetchone()
+        )
+        if student:
+            db.execute(
+                """
+                UPDATE students
+                SET admission_number=?, registration_number=?, name=?, email=?, mobile=?, hostel=?,
+                    room_number=?, course=?, academic_year=?, active=1
+                WHERE id=?
+                """,
+                (
+                    profile.admission_number,
+                    profile.registration_number,
+                    profile.name,
+                    profile.email,
+                    profile.mobile,
+                    profile.hostel,
+                    profile.room_number,
+                    profile.course,
+                    profile.academic_year,
+                    student["id"],
+                ),
+            )
+            student_id = student["id"]
+        else:
+            cursor = db.execute(
+                """
+                INSERT INTO students
+                    (admission_number, registration_number, name, email, mobile, hostel,
+                     room_number, course, academic_year, active)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                """,
+                (
+                    profile.admission_number,
+                    profile.registration_number,
+                    profile.name,
+                    profile.email,
+                    profile.mobile,
+                    profile.hostel,
+                    profile.room_number,
+                    profile.course,
+                    profile.academic_year,
+                ),
+            )
+            student_id = cursor.lastrowid
+
+        user = row_to_dict(
+            db.execute("SELECT * FROM users WHERE student_id=? LIMIT 1 FOR UPDATE", (student_id,)).fetchone()
+        )
+        if user:
+            db.execute(
+                "UPDATE users SET name=?, email=?, active=1 WHERE id=?",
+                (profile.name, profile.email, user["id"]),
+            )
+            user_id = user["id"]
+        else:
+            login_conflict = db.execute(
+                "SELECT id FROM users WHERE lower(login_id)=lower(?) LIMIT 1",
+                (profile.registration_number,),
+            ).fetchone()
+            if login_conflict:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Student registration number is already linked to another mess account.",
+                )
+            cursor = db.execute(
+                """
+                INSERT INTO users (login_id, password_hash, role, name, email, student_id, active)
+                VALUES (?, ?, 'student', ?, ?, ?, 1)
+                """,
+                (
+                    profile.registration_number,
+                    password_hash,
+                    profile.name,
+                    profile.email,
+                    student_id,
+                ),
+            )
+            user_id = cursor.lastrowid
+
+        return row_to_dict(db.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone())
+
+
 def get_student(student_id: int) -> dict | None:
     with get_db() as db:
         return row_to_dict(db.execute("SELECT * FROM students WHERE id = ? AND active = 1", (student_id,)).fetchone())
